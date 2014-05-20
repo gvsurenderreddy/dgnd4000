@@ -1,0 +1,428 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<head>
+<title>Adding iptables/traffic shaping, network optimisations and snmp</title>
+</head>
+<style>
+body {
+	font-family: Georgia, "Bitstream Charter", serif;
+}
+
+table a:link {
+	color: #666;
+	font-weight: bold;
+	text-decoration:none;
+}
+table a:visited {
+	color: #999999;
+	font-weight:bold;
+	text-decoration:none;
+}
+table a:active,
+table a:hover {
+	color: #bd5a35;
+	text-decoration:underline;
+}
+table {
+	font-family:Arial, Helvetica, sans-serif;
+	color:#666;
+	font-size:12px;
+	text-shadow: 1px 1px 0px #fff;
+	background:#eaebec;
+	margin:20px;
+	border:#ccc 1px solid;
+
+	-moz-border-radius:3px;
+	-webkit-border-radius:3px;
+	border-radius:3px;
+
+	-moz-box-shadow: 0 1px 2px #d1d1d1;
+	-webkit-box-shadow: 0 1px 2px #d1d1d1;
+	box-shadow: 0 1px 2px #d1d1d1;
+}
+table th {
+	padding:21px 25px 22px 25px;
+	border-top:1px solid #fafafa;
+	border-bottom:1px solid #e0e0e0;
+
+	background: #ededed;
+	background: -webkit-gradient(linear, left top, left bottom, from(#ededed), to(#ebebeb));
+	background: -moz-linear-gradient(top,  #ededed,  #ebebeb);
+}
+table th:first-child {
+	text-align: left;
+	padding-left:20px;
+}
+table tr:first-child th:first-child {
+	-moz-border-radius-topleft:3px;
+	-webkit-border-top-left-radius:3px;
+	border-top-left-radius:3px;
+}
+table tr:first-child th:last-child {
+	-moz-border-radius-topright:3px;
+	-webkit-border-top-right-radius:3px;
+	border-top-right-radius:3px;
+}
+table tr {
+	text-align: left;
+	padding-left:20px;
+}
+table td:first-child {
+	text-align: left;
+	padding-left:20px;
+	border-left: 0;
+}
+table td {
+	padding:18px;
+	border-top: 1px solid #ffffff;
+	border-bottom:1px solid #e0e0e0;
+	border-left: 1px solid #e0e0e0;
+
+	background: #fafafa;
+	background: -webkit-gradient(linear, left top, left bottom, from(#fbfbfb), to(#fafafa));
+	background: -moz-linear-gradient(top,  #fbfbfb,  #fafafa);
+}
+table tr.even td {
+	background: #f6f6f6;
+	background: -webkit-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f6f6f6));
+	background: -moz-linear-gradient(top,  #f8f8f8,  #f6f6f6);
+}
+table tr:last-child td {
+	border-bottom:0;
+}
+table tr:last-child td:first-child {
+	-moz-border-radius-bottomleft:3px;
+	-webkit-border-bottom-left-radius:3px;
+	border-bottom-left-radius:3px;
+}
+table tr:last-child td:last-child {
+	-moz-border-radius-bottomright:3px;
+	-webkit-border-bottom-right-radius:3px;
+	border-bottom-right-radius:3px;
+}
+table tr:hover td {
+	background: #f2f2f2;
+	background: -webkit-gradient(linear, left top, left bottom, from(#f2f2f2), to(#f0f0f0));
+	background: -moz-linear-gradient(top,  #f2f2f2,  #f0f0f0);
+}
+p {
+	margin-top: 1em;
+	margin-bottom: 0;
+}
+#boxout {
+	background: #e6e6e6;
+	float: right;
+	margin-left: 30px;
+	margin-bottom: 10px;
+	padding-bottom: 1em;
+}
+#boxout p
+{
+	margin-left: 10px;
+	margin-right: 10px;
+	font-size: 80%;
+	line-height: 1.2em;
+	color: #333333;
+}
+pre {
+	background: #e6e6e6;
+	padding: 10px 10px 10px 10px;
+	margin: 5px 5px 0 0;
+	display: inline-block;
+}
+li {
+	margin-top: 1em;
+}
+span {
+	font-family: monospace;
+}
+</style>
+<html>
+<body>
+<center><h1>Netgear DGND4000/N750</h1>
+<h3>Adding iptables/traffic shaping, network optimisations and snmp</h3>
+<h5>Tested with firmware V1.1.00.14</h5></center>
+<div id=boxout>
+	<p><strong>Additional reading:</strong></p>
+	<p><a href="http://www.evolware.org/?p=114">Customizing your Netgear DGN2200v3</a></p>
+	<p>has many useful tips and pre-built binaries.</p>
+	<p><a href="http://www.funtoo.org/Traffic_Control">Traffic Control</a></p>
+	<p><a href="http://blog.edseek.com/~jasonb/articles/traffic_shaping/scenarios.html">A Practical Guide to Linux Traffic Control</a></p>
+	<p><a href="http://luxik.cdi.cz/~devik/qos/htb/manual/userg.htm">HTB Linux queuing discipline manual</a></p>
+	<p>cover the basics of traffic shaping.</p>
+</div>
+<p>I've compiled a few extra iptables modules and enabled (what I consider) to be improved QoS with TCP ACK prioritisation and traffic shaping for http, https, ftp, dns, rtmp (Flash/BBC iPlayer) and icmp traffic, with all other traffic being classified as "bulk" or lower priority.</p>
+<p>In addition, I've cobbled together a simple server to expose various statistics for consumption by Cacti/MRTG etc.</p>
+<p>Although the procedures described here have been tested on a DGND4000 aka N750 router, much of it should also apply to other MIPS/Broadcom-based Netgear routers of a similar vintage (eg. DGN2200 etc.)
+<p>The files and sources are all <a href="http://nmacleod.com/public/netgear_bin/">here</a>.</p>
+<p><strong>DISCLAIMER: I take no responsibility if you brick your router, or if it sets your house on fire (etc.)</strong></p>
+<ol>
+<li>Enable telnet by accessing the "debug" page on your router:</li>
+<pre dir="ltr">
+http://&lt;router_ip&gt;/setup.cgi?todo=debug
+</pre>
+<li>Login over telnet on port 23 (login=admin, password=&lt;youradminpassword&gt;):</li>
+<p>Add config.sh to /usr/custom with the following commands:</p>
+<pre dir="ltr">
+mount -n -o remount,rw /
+mkdir /usr/custom
+wget http://www.nmacleod.com/public/netgear_bin/config.sh -O /usr/custom/config.sh
+chmod +x /usr/custom/config.sh
+</pre>
+<li>Add the following command to <span>/usr/etc/rcS</span>, somewhere after <span>/home</span> is mounted (use <span>vi</span> to edit files):</li>
+<pre dir="ltr">
+/bin/cp /usr/custom/* /home
+</pre>
+<p>Your <span>/usr/etc/rcS</span> should now look something like the following:</p>
+<pre dir="ltr">
+# more /etc/rcS
+#!/bin/sh
+export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/sbin/scripts
+
+UTC=yes
+
+mount -n -t proc proc /proc
+mount -n -t sysfs sysfs /sys
+mount -n -t ramfs ramfs /home
+mount -n -t ramfs ramfs /tmp
+mount -n -t ramfs ramfs /mnt
+mount -n -t ramfs ramfs /dev
+mkdir /dev/pts
+mount -t devpts devpts /dev/pts
+
+# build var directories
+/bin/mkdir -m 0777 /tmp/var
+/bin/mkdir -m 0777 /var/lock
+/bin/mkdir -m 0777 /var/log
+/bin/mkdir -m 0777 /var/run
+/bin/mkdir -m 0777 /var/tmp
+/bin/mkdir -m 0777 /var/w
+/bin/mkdir -m 0777 /tmp/etc
+/bin/mkdir -m 0755 /etc/dnrd
+#/bin/mkdir -m 0777 /tmp/mnt
+/bin/mkdir -m 0777 /mnt/shares
+/bin/mkdir -m 0777 /var/run/bftpd
+/bin/mkdir -m 0777 /tmp/nv
+/bin/mkdir -m 0777 /tmp/w
+
+<strong># install custom router updates
+/bin/cp /usr/custom/* /home</strong>
+
+/bin/cp -a /usr/etc/* /etc
+/bin/cp -a /usr/dev/* /dev/
+</pre>
+<p>Now, when the router boots, it will copy the contents of <span>/usr/custom</span> to <span>/home</span>.</p>
+<li>To ensure that the iptables changes are applied, add the following line to the end of <span>/usr/etc/ppp/ip-up</span>:</li>
+<pre dir="ltr">
+[ $pppIF = ppp1 ] && /home/config.sh verbose "$@" &
+</pre>
+<p>Now, whenever the ppp1 interface (ie. the WAN connection) is brought up, <span>/etc/ppp/ip-up</span> will execute <span>/home/config.sh</span>.</p>
+<li><span>/home/config.sh</span></li>
+<p>When executed, /home/config.sh will wait until an internet connection is established before downloading any of the required kernel modules and other scripts.</p>
+<p>Of course you can also download these files beforehand and store them in <span>/usr/custom</span>, in which case nothing will need to be downloaded.</p>
+<p>Log output from <span>/home/config.sh</span> is visible at <span>http://&lt;router_ip&gt;/ppp_log</span> although note that the log will only be written once the WAN connection is established, which can take several minutes.</p>
+<p>Once all of the required files are present in <span>/home</span>, they will be executed in turn as described below.</p>
+<ol>
+<li><span>/home/optimise.sh</span></li>
+<p>This script kills various unnecessary background processes to free available memory and reduce CPU load, while also bumping up several network settings so that the router may handle more connections and achieve better throughput.</p>
+<li><span>/home/trafficshaper.sh</span></li>
+<p>This script uses additional <span>iptables</span> kernel modules and <span>tc</span> (traffic control) to prioritise TCP ACK replies, while also classifying various types of traffic into high and low priority classes.</p>
+<p>The <span>trafficshaper.sh</span> script needs to know the maximum upstream capacity of the connection (in kbit/s) and how much is to be allocated to the high priority class, with the remainder being allocated to the low priority class.</p>
+<p>The default is for a 1000kbit upstream connection (on interface ppp1) split 450kbit to high priority, and the remainder (550kbit) to low priority.</p>
+<p>You can specify your own settings with the <span>c</span> parameter, eg. <span>c ppp1 1000 450 550</span> would replicate the default settings.</p>
+<p>See <a href="http://www.funtoo.org/Traffic_Control">here</a>, <a href="http://blog.edseek.com/~jasonb/articles/traffic_shaping/scenarios.html">here</a> and <a href="http://luxik.cdi.cz/~devik/qos/htb/manual/userg.htm">here</a> for more details on traffic shaping.</p>
+<li><span>/home/njmserver</span></li>
+<p>This binary will be started as a daemon (ie. running forever), accepting command requests on port 5001 and responding with the results and is used to implement a poor man's snmp monitoring tool.</p>
+<p>Use <span>/home/njmserver</span> in conjunction with <span>snmp.py</span> running on a local PC (or Raspberry Pi) to collect the real-time values of various router "sensors".</p>
+<p>This information could have been collected using telnet, but this seemed more efficient and reliable. Be aware that the server accepts non-authenticated requests, which for the paranoid could be considered a security risk, however it only listens on your LAN interfaces which should be relatively secure.</p>
+<li>Lastly, <span>telnet</span> will be automatically enabled so that you no longer need to enable it via the "debug" router page.</li>
+</ol>
+<li>Optional Extras</li>
+<ol>
+<li>P2P Rubbish</li>
+<p>Two P2P related processes are repeatedly re-started by <span>/usr/sbin/rc</span>, possibly as a result of the <span>/usr/sbin/rc schedule restart</span> cron entry that is run every day at 00:00.</p>
+<p>These processes wake up every 5 seconds to check that other P2P related processes are running, and starting them if required. Although you can kill these monitoring processes (and they are indeed killed by <span>/home/optimise.sh</span>) they will return again and again.</p>
+<p>While removing the cron job would work, it may also be useful to restart processes on a regular basis in order to avoid memory leaks.</p>
+<p>Therefore the best solution is to edit the offending monitoring scripts so that they exit immediately rather than doing anything "useful".</p>
+<p>The two scripts are:</p>
+<pre dir="ltr">
+/opt/remote/bin/checkleafnets.sh
+/opt/remote/bin/checkleafp2p.sh
+</pre>
+<p>Edit these files and insert a <span>return ${OK}</span> statement at the top of each file so that they appear as follows:</p>
+<pre dir="ltr">
+#!/bin/sh
+<strong>return ${OK}</strong>
+
+&lt;remainder of script&gt;
+</pre>
+<li>DNS Spam</li>
+<p>Another minor annoyance is the "DNS Hijack" <span>iptables</span> module that Netgear use for the translation of specific domains to the local IP address of the router.<p>
+<p>This module, <span>/lib/modules/ipt_dnshj.ko</span> will intercept <em>every</em> udp DNS query and inspect the domain to see if it is one of the special domains that Netgear use to manage the router:<p>
+<pre dir="ltr">
+www.routerlogin.com
+routerlogin.com
+www.routerlogin.net
+routerlogin.net
+</pre>
+<p>Any match on one of the above domains will always return the local IP address of the router, eg. <span>192.168.0.1</span>.</p>
+<p>Which is fine, it's just that the module has the following check:</p>
+<pre dir="ltr">
+if (udphdr->len < 38) {
+    printk("Bad dns query!\n");
+    return 0;
+}
+</pre>
+<p>which means that for pretty much every DNS query <em>other</em> than one of the special Netgear domains, it will spit out "Bad dns query!" to the kernel log (visible with <span>dmesg</span>). It will do this, a <em>lot</em>!</p>
+<pre dir="ltr">
+Bad dns query!
+Bad dns query!
+Bad dns query!
+Bad dns query!
+Bad dns query!
+Bad dns query!
+Bad dns query!
+Bad dns query!
+Bad dns query!
+</pre>
+<p>The version of ip_dnshj.ko on my web space has this message suppressed - just replace your version as follows:</p>
+<pre dir="ltr">
+mount -n -o remount,rw /
+cd /lib/modules
+mv ipt_dnshj.ko ipt_dnshj.ko.bak
+wget http://www.nmacleod.com/public/netgear_bin/ipt_dnshj.ko -O ipt_dnshj.ko
+mount -n -o remount,ro /
+reboot
+</pre>
+<p>I did look into removing the <span>iptables</span> chain for <span>dnshj</span> - it's the first rule on <span>PREROUTING</span>:</p>
+<pre dir="ltr">
+# iptables -t nat -S PREROUTING
+-P PREROUTING ACCEPT
+-A PREROUTING -i group1 -p udp -m udp --dport 53 -m dnshj -j DNAT --to-destination 192.168.0.1
+-A PREROUTING -j PRE_CNAPT
+-A PREROUTING -j PT_NAT
+-A PREROUTING -p udp -m udp --dport 53 -j DNS_RELAY
+-A PREROUTING -j INBOUND_NAT
+-A PREROUTING -j PRE_VPN
+-A PREROUTING -j REMOTE_NAT
+-A PREROUTING -j LOCAL_SERVICE_NAT
+-A PREROUTING -j USB_NAT
+-A PREROUTING -j INBOUND_NAT
+-A PREROUTING -j IM_DETECT_NAT
+-A PREROUTING -j MINIUPNPD_W
+-A PREROUTING -j DMZ_NAT
+-A PREROUTING -p udp -j CUDP_NAT
+-A PREROUTING -j PRE_IGMP
+</pre>
+<p>but unfortunately <span>/usr/sbin/rc dnshj start|stop|restart</span> is called in several places and will repeatedly restore the rule so the easiest fix is simply to recompile the module without the log spam.</p>
+</ol>
+</ol>
+<h3>SNMP</h3>
+<p>For snmp monitoring, use <span>snmp.py</span> in conjunction with <span>njmserver</span> running on the router.</p>
+<p><span>snmp.py</span> can be run as either a daemon or a client. As a daemon, it will cache results obtained from the router (via <span>njmserver</span>) for efficiency and also implement 64-bit counter wrapping. The client can communicate with either the daemon (<span>-D</span>) or directly with the router (on whatever port <span>njmserver</span> is listening) but will not return 64-bit counters unless communicating with the daemon.</p>
+<p>Tools such as Cacti can use <span>snmp.py</span> (in client mode) as a scripted data input method to obtain counter and gauge information. Use filters (<span>-f</span> or <span>--filter</span>) to specify individual data sources.</p>
+<p>The following sensors and filters are supported:</p>
+<table cellspacing='0'>
+	<thead>
+		<tr>
+			<th>Sensor</th>
+			<th>Description</th>
+			<th>Filters</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>adsl</td>
+			<td>ADSL stats</td>
+			<td>att, CRC, ES, pwr, RS, RSCorr, RSUnCorr, SF, SFErr, snr, sync, uptime</td>
+		</tr>
+		<tr class="even">
+			<td>conn</td>
+			<td>Total connections</td>
+			<td>delta, rate, total</td>
+		</tr>
+		<tr>
+			<td>cpu</td>
+			<td>CPU stats, as percentage</td>
+			<td>cpuidle, cpuio, cpuirq, cpunic, cpusirq, cpusys, cputot, cpuusr</td>
+		</tr>
+		<tr class="even">
+			<td>ipt</td>
+			<td>iptables classification - bytes and packets for various traffic types (http, https, rtmp, bulk, etc.)</td>
+			<td>ackprio, ackprio_ign, ackprio_max, ackprio_min, bulk, dns, ftp, http, https, icmp, mindelay, rtmp, tosfix, TOTAL</td>
+		</tr>
+		<tr>
+			<td>load</td>
+			<td>load averages (1, 5 and 15 minutes)</td>
+			<td>1min, 5min, 15min</td>
+		</tr>
+		<tr class="even">
+			<td>mem</td>
+			<td>Memory free and memory used</td>
+			<td>memfree, memused</td>
+		</tr>
+		<tr>
+			<td>net</td>
+			<td>Network interface stats - bytes up/down for eth0-eth3 (LAN), nas1 (WAN), wl0 (2.4GHz) and wl1 (5GHz)</td>
+			<td>eth0, eth1, eth2, eth3, nas1, wl0, wl1</td>
+		</tr>
+		<tr class="even">
+			<td>tc</td>
+			<td>Traffic control/shaping - stats for each class.</td>
+			<td>hiprio, loprio, parent</td>
+		</tr>
+		<tr>
+			<td>uptime</td>
+			<td>System uptime in seconds</td>
+			<td></td>
+		</tr>
+	</tbody>
+</table>
+<p>If you wish to query additional sensors, add the support to <span>snmp.py</span>, there is no need to change <span>njmserver</span>.</p>
+<p>Example:</p>
+<pre><span>snmp.py</span> -D --sensor net --filter eth0</pre>
+<p>will obtain the <span>eth0</span> counters read from <span>/proc/net/dev</span> on the router.</p>
+<p>Using this example, network statistics will be queried from the daemon (<span>-D</span>), which will in turn query the router.
+<p>When the next data source request is made by Cacti:</p>
+<pre><span>snmp.py</span> -D --sensor net --filter eth1</pre>
+<p>immediately after the query for <span>eth0</span>, the daemon will respond using the already cached information (cached <span>/proc/net/dev</span> data) without communicating further with the router, whereas connecting directly with the router would require the information to be re-requested and potentially increasing load on the router, not to mention skewing any network-related stats.</p>
+<p>Cache behaviour is controlled by the client using the <span>--cache</span> switch to specify the cache timeout period (default is 30 seconds, 0 will disable caching).</p>
+</p>
+<p>The daemon can also track when 32-bit counter wraps occur and respond with 64-bit counters.</p>
+<p>The following example uses the --verbose switch to generate more readable results, don't specify --verbose when processing results with Cacti or MRTG etc.:</p>
+<pre dir="ltr">
+$ ./<span>snmp.py</span> -D --verbose --sensor net ipt tc --interval 5
+eth0  : RX:      9,101,789,450 (    2,408,355,      75,345) bytes, TX:      4,362,609,720 (      688,432,      21,538) bytes [rx:   2, tx:   1]
+eth1  : RX:      4,346,715,533 (    3,106,140,      97,174) bytes, TX:      4,597,076,147 (   34,124,335,   1,067,561) bytes [rx:   1, tx:   1]
+eth2  : RX:          4,999,258 (        3,064,          96) bytes, TX:      4,411,681,165 (        6,773,         212) bytes [rx:   0, tx:   1]
+eth3  : RX:                  0 (            0,           0) bytes, TX:                  0 (            0,           0) bytes [rx:   0, tx:   0]
+nas1  : RX:      8,944,144,649 (   39,204,658,   1,226,496) bytes, TX:     13,200,471,758 (    3,404,414,     106,506) bytes [rx:   2, tx:   3]
+wl0   : RX:            275,715 (        1,270,          40) bytes, TX:      4,298,196,215 (        8,806,         276) bytes [rx:   0, tx:   1]
+wl1   : RX:             99,406 (            0,           0) bytes, TX:          3,555,849 (        6,424,         201) bytes [rx:   0, tx:   0]
+tosfix     :          11,788 (       200,        7) bytes,          188 (       5,        1) pkts
+ackprio    :   8,897,631,641 ( 2,396,834,   74,953) bytes,      316,364 (  13,174,      412) pkts
+mindelay   :       5,415,834 (   627,096,   19,611) bytes,       98,274 (  11,520,      361) pkts
+http       :         632,048 (         0,        0) bytes,        6,911 (       0,        0) pkts
+https      :         608,987 (       357,       12) bytes,        3,094 (       6,        1) pkts
+ftp        :       8,739,200 (         0,        0) bytes,        6,369 (       0,        0) pkts
+rtmp       :               0 (         0,        0) bytes,            0 (       0,        0) pkts
+icmp       :         194,876 (       896,       29) bytes,        6,219 (      32,        2) pkts
+dns        :          31,360 (         0,        0) bytes,          496 (       0,        0) pkts
+bulk       :   8,888,506,486 ( 2,429,218,   75,966) bytes,      155,995 (       0,        0) pkts
+TOTAL      :   8,909,865,458 ( 3,700,966,  115,735) bytes,      381,854 (  17,787,      557) pkts
+ackprio_ign:   8,887,776,331 ( 1,428,424,   44,670) bytes,      206,619 (     979,       31) pkts
+ackprio_min:       5,736,667 (   643,399,   20,121) bytes,      104,496 (  11,838,      371) pkts
+ackprio_max:       4,130,840 (   328,123,   10,261) bytes,        5,325 (     395,       13) pkts
+hiprio: sent      15,213,978 (  632,356,  19,773 B/s) rate 166,496 /   380 lended     110,217 (11,625,   364 B/s) borrowed       3,408 (     0,     0 B/s) dropped      0 (   0,  0 B/s)
+loprio: sent     301,445,049 (3,033,952,  94,864 B/s) rate 752,240 /   172 lended     143,923 ( 3,773,   118 B/s) borrowed     101,037 ( 1,664,    53 B/s) dropped      0 (   0,  0 B/s)
+parent: sent     316,641,867 (3,649,148, 114,100 B/s) rate 922,776 /   553 lended     104,445 ( 1,664,    53 B/s) borrowed           0 (     0,     0 B/s) dropped      0 (   0,  0 B/s)
+Next update in 5 seconds...
+</pre>
+<p><small>Note 1: For network traffic-related sensors the numbers reported are: "current value (delta for period, rate per second)".</small></p>
+<p><small>Note 2: 32-bit counter wraps are shown on the net stats - nas1 has wrapped twice on rx and three times on tx - 32 bit counters will wrap every 4GB</small></p>
+<p>Example stats from a Netgear DGND4000 using Cacti (click to enlarge):</p>
+<a href="Graphs_Preview_Mode.png"><img src="Graphs_Preview_Mode.png" width=800px></a>
+<p>Much of the traffic in the above image is classified as "bulk" (black area) or low priority as my router had been uploading over ssh/rsync to a remote site most of the previous 24 hours. The red peaks are TCP ACK prioritisation ensuring that downstream performance is unaffected as much as possible by the upstream activity.</p>
+<p>Detailed view of the Traffic Type graph (click to enlarge):</p>
+<a href="Router_Traffic_Type_Stats_(Outbound_Packets).png"><img src="Router_Traffic_Type_Stats_(Outbound_Packets).png" width=800px></a>
+</body>
+</html>
