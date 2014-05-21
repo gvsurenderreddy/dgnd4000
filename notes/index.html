@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <head>
-<title>Adding iptables/traffic shaping, network optimisations and snmp</title>
+<title>Adding iptables/traffic shaping, network optimisations and SNMP</title>
 </head>
 <style>
 body {
@@ -139,7 +139,7 @@ span {
 <html>
 <body>
 <center><h1>Netgear DGND4000/N750</h1>
-<h3>Adding iptables/traffic shaping, network optimisations and snmp</h3>
+<h3>Adding iptables/traffic shaping, network optimisations and SNMP</h3>
 <h5>Tested with firmware V1.1.00.14</h5></center>
 <div id=boxout>
 	<p><strong>Additional reading:</strong></p>
@@ -219,7 +219,7 @@ mount -t devpts devpts /dev/pts
 <li><span>/home/config.sh</span></li>
 <p>When executed, <span>/home/config.sh</span> will wait until an internet connection is established before downloading any of the required kernel modules and other scripts.</p>
 <p>Of course you can also download these files beforehand and store them in <span>/usr/custom</span>, in which case nothing will need to be downloaded.</p>
-<p>Log output from <span>/home/config.sh</span> is visible at <span>http://&lt;router_ip&gt;/ppp_log</span> although note that the log will only be written once the WAN connection is established, which can take several minutes.</p>
+<p>Output from <span>/home/config.sh</span> is logged to <span>http://&lt;router_ip&gt;/ppp_log</span> although note that the log will only be written once the WAN connection is established, which can take several minutes.</p>
 <p>Once all of the required files are present in <span>/home</span>, they will be executed in turn as described below.</p>
 <ol>
 <li><span>/home/optimise.sh</span></li>
@@ -231,7 +231,7 @@ mount -t devpts devpts /dev/pts
 <p>You can specify your own settings with the <span>c</span> parameter, eg. <span>c ppp1 1000 450 550</span> would replicate the default settings.</p>
 <p>See <a href="http://www.funtoo.org/Traffic_Control">here</a>, <a href="http://blog.edseek.com/~jasonb/articles/traffic_shaping/scenarios.html">here</a> and <a href="http://luxik.cdi.cz/~devik/qos/htb/manual/userg.htm">here</a> for more details on traffic shaping.</p>
 <li><span>/home/njmserver</span></li>
-<p>This binary will be started as a daemon (ie. running forever), accepting command requests on port 5001 and responding with the results and is used to implement a poor man's snmp monitoring tool.</p>
+<p>This binary will be started as a daemon (ie. running forever), accepting command requests on port 5001 and responding with the results that can be used to implement a poor man's SNMP monitoring tool.</p>
 <p>Use <span>/home/njmserver</span> in conjunction with <span>snmp.py</span> running on a local PC (or Raspberry Pi) to collect the real-time values of various router "sensors".</p>
 <p>This information could have been collected using telnet, but this seemed more efficient and reliable. Be aware that the server accepts non-authenticated requests, which for the paranoid could be considered a security risk, however it only listens on your LAN interfaces which should be relatively secure.</p>
 <li>Lastly, <span>telnet</span> will be automatically enabled so that you no longer need to enable it via the "debug" router page.</li>
@@ -317,7 +317,7 @@ reboot
 </ol>
 </ol>
 <h3>SNMP</h3>
-<p>For snmp monitoring, use <span>snmp.py</span> in conjunction with <span>njmserver</span> running on the router.</p>
+<p>For SNMP monitoring, use <span>snmp.py</span> in conjunction with <span>njmserver</span> running on the router.</p>
 <p><span>snmp.py</span> can be run as either a daemon or a client. As a daemon, it will cache results obtained from the router (via <span>njmserver</span>) for efficiency and also implement 64-bit counter wrapping. The client can communicate with either the daemon (<span>-D</span>) or directly with the router (on whatever port <span>njmserver</span> is listening) but will not return 64-bit counters unless communicating with the daemon.</p>
 <p>Tools such as Cacti can use <span>snmp.py</span> (in client mode) as a scripted data input method to obtain counter and gauge information. Use filters (<span>-f</span> or <span>--filter</span>) to specify individual data sources.</p>
 <p>The following sensors and filters are supported:</p>
