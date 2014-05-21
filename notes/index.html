@@ -151,9 +151,9 @@ span {
 	<p>cover the basics of traffic shaping.</p>
 </div>
 <p>I've compiled a few extra iptables modules and enabled (what I consider) to be improved QoS with TCP ACK prioritisation and traffic shaping for http, https, ftp, dns, rtmp (Flash/BBC iPlayer) and icmp traffic, with all other traffic being classified as "bulk" or lower priority.</p>
-<p>In addition, I've cobbled together a simple server to expose various statistics for consumption by Cacti/MRTG etc.</p>
+<p>In addition, I've cobbled together a simple server to expose various SNMP-type statistics for consumption by Cacti/MRTG etc.</p>
 <p>Although the procedures described here have been tested on a DGND4000 aka N750 router, much of it should also apply to other MIPS/Broadcom-based Netgear routers of a similar vintage (eg. DGN2200 etc.)
-<p>The files and sources are all <a href="http://nmacleod.com/public/netgear_bin/">here</a>, and also on <a href="https://github.com/MilhouseVH/dgnd4000">github</a> - please open an <a href="https://github.com/MilhouseVH/dgnd4000/issues">issue</a> on github if you've got any questions or suggestions.</p>
+<p>The files and sources are all <a href="http://nmacleod.com/public/netgear_bin/">here</a>, and also on <a href="https://github.com/MilhouseVH/dgnd4000">github</a> - please open an <a href="https://github.com/MilhouseVH/dgnd4000/issues">issue</a> on github if you have any questions or suggestions.</p>
 <p><strong>DISCLAIMER: I take no responsibility if you brick your router, or if it sets your house on fire (etc.)</strong></p>
 <ol>
 <li>Enable telnet by accessing the "debug" page on your router:</li>
@@ -217,7 +217,7 @@ mount -t devpts devpts /dev/pts
 </pre>
 <p>Now, whenever the ppp1 interface (ie. the WAN connection) is brought up, <span>/etc/ppp/ip-up</span> will execute <span>/home/config.sh</span>.</p>
 <li><span>/home/config.sh</span></li>
-<p>When executed, /home/config.sh will wait until an internet connection is established before downloading any of the required kernel modules and other scripts.</p>
+<p>When executed, <span>/home/config.sh</span> will wait until an internet connection is established before downloading any of the required kernel modules and other scripts.</p>
 <p>Of course you can also download these files beforehand and store them in <span>/usr/custom</span>, in which case nothing will need to be downloaded.</p>
 <p>Log output from <span>/home/config.sh</span> is visible at <span>http://&lt;router_ip&gt;/ppp_log</span> although note that the log will only be written once the WAN connection is established, which can take several minutes.</p>
 <p>Once all of the required files are present in <span>/home</span>, they will be executed in turn as described below.</p>
@@ -238,9 +238,9 @@ mount -t devpts devpts /dev/pts
 </ol>
 <li>Optional Extras</li>
 <ol>
-<li>P2P Rubbish</li>
+<li>Disable P2P monitor processes</li>
 <p>Two P2P related processes are repeatedly re-started by <span>/usr/sbin/rc</span>, possibly as a result of the <span>/usr/sbin/rc schedule restart</span> cron entry that is run every day at 00:00.</p>
-<p>These processes wake up every 5 seconds to check that other P2P related processes are running, and starting them if required. Although you can kill these monitoring processes (and they are indeed killed by <span>/home/optimise.sh</span>) they will return again and again.</p>
+<p>These processes wake up every 5 seconds to check that other P2P related processes are running and starting them if not. Although you can kill these monitoring processes (and they are indeed killed by <span>/home/optimise.sh</span>) they will return again and again.</p>
 <p>While removing the cron job would work, it may also be useful to restart processes on a regular basis in order to avoid memory leaks.</p>
 <p>Therefore the best solution is to edit the offending monitoring scripts so that they exit immediately rather than doing anything "useful".</p>
 <p>The two scripts are:</p>
@@ -255,7 +255,7 @@ mount -t devpts devpts /dev/pts
 
 &lt;remainder of script&gt;
 </pre>
-<li>DNS Spam</li>
+<li>Silence DNS log spam</li>
 <p>Another minor annoyance is the "DNS Hijack" <span>iptables</span> module that Netgear use for the translation of specific domains to the local IP address of the router.<p>
 <p>This module, <span>/lib/modules/ipt_dnshj.ko</span> will intercept <em>every</em> udp DNS query and inspect the domain to see if it is one of the special domains that Netgear use to manage the router:<p>
 <pre dir="ltr">
@@ -421,7 +421,7 @@ Next update in 5 seconds...
 <p><small>Note 2: 32-bit counter wraps are shown on the net stats - nas1 has wrapped twice on rx and three times on tx - 32 bit counters will wrap every 4GB</small></p>
 <p>Example stats from a Netgear DGND4000 using Cacti (click to enlarge):</p>
 <a href="Graphs_Preview_Mode.png"><img src="Graphs_Preview_Mode.png" width=800px></a>
-<p>Much of the traffic in the above image is classified as "bulk" (black area) or low priority as my router had been uploading over ssh/rsync to a remote site most of the previous 24 hours. The red peaks are TCP ACK prioritisation ensuring that downstream performance is unaffected as much as possible by the upstream activity.</p>
+<p>Much of the traffic in the above image is classified as "bulk" (black area) or low priority as my router had been uploading over ssh/rsync to a remote site most of the previous 24 hours. The red peaks are TCP ACK prioritisation (measured by <span>-f ackprio_min</span>) ensuring that downstream performance is unaffected as much as possible by the upstream activity.</p>
 <p>Detailed view of the Traffic Type graph (click to enlarge):</p>
 <a href="Router_Traffic_Type_Stats_(Outbound_Packets).png"><img src="Router_Traffic_Type_Stats_(Outbound_Packets).png" width=800px></a>
 </body>
