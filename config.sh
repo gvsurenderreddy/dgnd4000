@@ -18,14 +18,16 @@ log() {
 succeed() {
   command="$1"
   retries=$2
-  waitsecs=${3:-0}
+  waitsecs=${3:-1}
+
   res=1
   count=0
   while [ : ]; do
     count=$(($count+1))
     TXT="$($command 2>&1)" && res=0 || res=1
-    [ $LOGLEVEL = VERBOSE ] && log "Executing command [$command]"
-    [ $LOGLEVEL = DEBUG ] && log "RESULT for command [$command]:\n${TXT}\n-------"
+    [ $res = 0 ] && MSG="SUCCESS" || MSG="FAIL"
+    [ $LOGLEVEL = VERBOSE ] && log "Executing command [$command] ($MSG)"
+    [ $LOGLEVEL = DEBUG ] && log "RESULT for command [$command] ($MSG):\n${TXT}\n-------"
     [ $res = 0 -o $count -ge $retries ] && break
     [ $waitsecs != 0 ] && sleep $waitsecs
   done
@@ -66,12 +68,6 @@ LOGLEVEL=QUIET
 
 log "Called, presumably from ip-up with the following arguments:"
 log "  Args: [$*]"
-
-#Grab primary DNS from info file - use Google DNS if primary DNS not found
-DNS=$(awk '/dns/ {print $2; exit}' /tmp/w/info_1)
-DNS=${DNS:-8.8.4.4}
-
-succeed "ping ${DNS} -w1 -c1" $RETRIES 1 && log "WAN connection is alive!" || exit
 
 installexec "N" "" "${WEBHOST}/optimise.sh" ${BINDIR}/optimise.sh "" || exit
 installexec "N" "" "${WEBHOST}/trafficshaper.sh" ${BINDIR}/trafficshaper.sh "c ppp1 1000 450 550" || exit
