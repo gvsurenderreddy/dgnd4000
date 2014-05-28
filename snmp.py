@@ -526,6 +526,14 @@ def getiptablecounters(args, storage):
 
   bulk = [TOTAL[0] - count_p, TOTAL[1] - count_b]
 
+  # If bulk starts reporting negative packets or bytes
+  # then its time to reset the counters
+  if bulk[0] < 0 or bulk[1] < 0:
+    runcmd(args, "iptables -t mangle -Z POSTROUTING")
+    runcmd(args, "iptables -t mangle -Z ackprio")
+    runcmd(args, "iptables -t mangle -Z tosfix")
+    bulk = [0, 0]
+
   storage[2] = storage[1]
   storage[1] = (time.time(), {"01tosfix":      {"pkts": tosfix[0],      "bytes": tosfix[1]},
                               "02ackprio":     {"pkts": ackprio[0],     "bytes": ackprio[1]},
