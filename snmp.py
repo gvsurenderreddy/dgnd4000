@@ -701,6 +701,74 @@ def formattrafficcounters(args, storage, filter=None, verbose=False):
 
   return "\n".join(output) if verbose else " ".join(output)
 
+def getdoscounters(args, storage):
+  dosdata = runcmd(args, "iptables -L DOS -vx")
+
+  attacks = {}
+
+  pname = ""
+  for line in dosdata.split("\n"):
+    drop = re.match(" *([0-9]*) *([0-9]*) *DROP .*", " %s" % line)
+    if drop:
+      if prefix:
+        attacks[pname].update({"drop": {"pkts": int(drop.group(1)), "bytes": int(drop.group(2))}})
+    else:
+      prefix = re.match(" *([0-9]*) *([0-9]*) *DLOG .*prefix [`'](.*)'.*", " %s" % line)
+      if prefix:
+        pname = prefix.group(3).replace("Scan","").replace("Attack","").replace(" ","")
+        attacks[pname] = {"log": {"pkts": int(prefix.group(1)), "bytes": int(prefix.group(2))}}
+
+  storage[2] = storage[1]
+  storage[1] = (time.time(), attacks)
+
+  if storage[2][0] == 0:
+    storage[2] = storage[1]
+  if storage[0][1] == None:
+    storage[0] = (0, {})
+
+  new = storage[1]
+  old = storage[2]
+  dTime = new[0] - old[0]
+  dTime = 1.0 if dTime <= 0 else dTime
+  actual = {}
+  delta = {}
+  for i in new[1]:
+    (op, np, wrapp) = counterwrap(args, dTime, storage[0][1], old[1][i]["drop"]["pkts"], new[1][i]["drop"]["pkts"], key="pkts", item2=i)
+    (ob, nb, wrapb) = counterwrap(args, dTime, storage[0][1], old[1][i]["drop"]["bytes"], new[1][i]["drop"]["bytes"], key="bytes", item2=i)
+    actual[i] = {"pkts": np, "bytes": nb}
+    delta[i] = {"pkts": np - op, "bytes": nb - ob}
+
+  storage[0] = (dTime, {"actual": actual, "delta": delta})
+
+def formatdoscounters(args, storage, filter=None, verbose=False):
+  if not storage[0][1]: return
+
+  output = []
+  dtime = storage[0][0]
+  actual = storage[0][1]["actual"]
+  delta  = storage[0][1]["delta"]
+
+  for i in sorted(actual):
+    key = i
+    if not filter or filter == key:
+      if verbose:
+        output.append("%-15s: %15s (%10s, %8s) bytes, %12s (%8s, %8s) pkts" %
+                      (key,
+                        format(actual[i]["bytes"], ",d"),
+                        format(delta[i]["bytes"], ",d"),
+                        format(calc_rate(dtime, delta[i]["bytes"]), ",d"),
+                        format(actual[i]["pkts"], ",d"),
+                        format(delta[i]["pkts"], ",d"),
+                        format(calc_rate(dtime, delta[i]["pkts"]), ",d")
+                        ))
+      else:
+        if filter:
+          output.append("bytes:%d pkts:%d" % (actual[i]["bytes"], actual[i]["pkts"]))
+        else:
+          output.append("%s_bytes:%d %s_pkts:%d" % (key, actual[i]["bytes"], key, actual[i]["pkts"]))
+
+  return "\n".join(output) if verbose else " ".join(output)
+
 def init():
   global DEBUG
 
@@ -713,6 +781,7 @@ def init():
   IPT = [(0, None), (0, None), (0, None)]
   TC  = [(0, None), (0, None), (0, None)]
   CONN= [(0, None), (0, None), (0, None)]
+  DOS = [(0, None), (0, None), (0, None)]
 
   SENSORS = {"uptime":{"storage": UPT, "get": getuptimegauge,    "format": formatuptimegauge},
              "cpu":   {"storage": CPU, "get": getcpugauge,       "format": formatcpugauge},
@@ -722,7 +791,9 @@ def init():
              "net":   {"storage": NET, "get": getnetcounters,    "format": formatnetcounters},
              "adsl":  {"storage": ADSL,"get": getadslcounters,   "format": formatadslcounters},
              "ipt":   {"storage": IPT, "get": getiptablecounters,"format": formatiptablecounters},
-             "tc":    {"storage": TC,  "get": gettrafficcounters,"format": formattrafficcounters}}
+             "tc":    {"storage": TC,  "get": gettrafficcounters,"format": formattrafficcounters},
+             "dos":   {"storage": DOS, "get": getdoscounters,    "format": formatdoscounters}
+             }
 
   parser = argparse.ArgumentParser(description="Extract SNMP-type counters from router", \
                     formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=25,width=90))
@@ -823,6 +894,7 @@ def readsensors(args, sensors, key=None):
         else:
           sensors[s]["get"](args, sensors[s]["storage"])
       except Exception as e:
+        raise #FIXME
         errors.append("SENSOR: %s" % s)
         errors.append(traceback.format_exc())
         if LASTCOMMAND:
