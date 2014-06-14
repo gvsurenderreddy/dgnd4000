@@ -158,6 +158,9 @@ span {
 	<p><a href="http://blog.edseek.com/~jasonb/articles/traffic_shaping/scenarios.html">A Practical Guide to Linux Traffic Control</a></p>
 	<p><a href="http://luxik.cdi.cz/~devik/qos/htb/manual/userg.htm">HTB Linux queuing discipline manual</a></p>
 	<p>cover the basics of traffic shaping.</p>
+	<p><a href="http://www.kitz.co.uk/routers/dg834GT_targetsnr.htm">Override Target SNR</a></p>
+	<p><a href="http://www.increasebroadbandspeed.co.uk/SNR-tweak">Broadband SNR tweak</a></p>
+	<p>discuss ways of setting a target SNR.</p>
 </div>
 <p>I've compiled a few extra iptables modules and enabled (what I consider) to be improved QoS with TCP ACK prioritisation and traffic shaping for http, https, ftp, dns, rtmp (Flash/BBC iPlayer) and icmp traffic, with all other traffic being classified as "bulk" or lower priority.</p>
 <p>In addition, I've cobbled together a simple server to expose various SNMP-type statistics for consumption by Cacti/MRTG etc.</p>
@@ -220,17 +223,23 @@ mount -t devpts devpts /dev/pts
 /bin/cp -a /usr/dev/* /dev/
 </pre>
 <p>Now, when the router boots, it will copy the contents of <span>/usr/custom</span> to <span>/home</span>.</p>
-<li>To ensure that the iptables changes are applied, add the following line to the end of <span>/usr/etc/ppp/ip-up</span>:</li>
+<li>To ensure that the router is automatically reconfigured when a new connection is established, add the following line to the end of <span>/usr/etc/ppp/ip-up</span>:</li>
 <pre dir="ltr">
 [ $pppIF = ppp1 ] && /home/config.sh verbose "$@" &
 </pre>
 <p>Now, whenever the ppp1 interface (ie. the WAN connection) is brought up, <span>/etc/ppp/ip-up</span> will execute <span>/home/config.sh</span>.</p>
 <li><span>/home/config.sh</span></li>
-<p>When executed, <span>/home/config.sh</span> will wait until an internet connection is established before downloading any of the required kernel modules and other scripts.</p>
-<p>Of course you can also download these files beforehand and store them in <span>/usr/custom</span>, in which case nothing will need to be downloaded.</p>
+<p>When executed, <span>/home/config.sh</span> will start telnetd (if not already running), then wait until an internet connection is established before downloading the required kernel modules and other scripts.</p>
+<p>When a connection is resynced without the router being rebooted, the scripts and modules from the previous connection will be found and reused without any downloading being necessary.</p>
+<p>Of course you can also download these files beforehand and store them in <span>/usr/custom</span>, in which case no files will ever need to be downloaded.</p>
 <p>Output from <span>/home/config.sh</span> is logged to <span>http://&lt;router_ip&gt;/ppp_log</span> although note that the log will only be written once the WAN connection is established, which can take several minutes.</p>
 <p>Once all of the required files are present in <span>/home</span>, they will be executed in turn as described below.</p>
 <ol>
+<li><span>/home/targetsnr.sh</span></li>
+<p>This script will set a new target SNR, assuming you provide an argument that is not 100.</p>
+<p>See links in "Additional Reading" boxout for more details on modifying the target SNR.</p>
+<p>The target SNR will be reset to default after booting. Changing the target SNR will drop the current connection, resulting in <span>/home/config.sh</span> being called a second time.</p>
+<p>A resync without a reboot should not result in the target SNR needing to be changed with each new resync.</p>
 <li><span>/home/optimise.sh</span></li>
 <p>This script kills various unnecessary background processes to free available memory and reduce CPU load, while also bumping up several network settings so that the router may handle more connections and achieve better throughput.</p>
 <li><span>/home/trafficshaper.sh</span></li>
@@ -243,7 +252,6 @@ mount -t devpts devpts /dev/pts
 <p>This binary will be started as a daemon (ie. running forever), accepting command requests on port 5001 and responding with the results that can be used to implement a poor man's SNMP monitoring tool.</p>
 <p>Use <span>/home/njmserver</span> in conjunction with <span>snmp.py</span> running on a local PC (or Raspberry Pi) to collect the real-time values of various router "sensors".</p>
 <p>This information could have been collected using telnet, but this seemed more efficient and reliable. Be aware that the server accepts non-authenticated requests, which for the paranoid could be considered a security risk, however it only listens on your LAN interfaces which should be relatively secure.</p>
-<li>Lastly, <span>telnet</span> will be automatically enabled so that you no longer need to enable it via the "debug" router page.</li>
 </ol>
 <li>Optional Extras</li>
 <ol>

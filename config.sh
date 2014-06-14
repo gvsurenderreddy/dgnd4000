@@ -37,12 +37,14 @@ succeed() {
 
 installexec() {
   DAEMONIZE=$1
-  RUNNING=$2
+  PID=$2
   SOURCE=$3
   TARGET=$4
   ARGS=$5
 
-  if [ "${RUNNING}" = "" ]; then
+  RESULT=0
+  
+  if [ "${PID}" = "" ]; then
     if [ ! -f ${TARGET} ]; then
       succeed "wget ${SOURCE} -O ${TARGET}" $RETRIES 1 || return 1
       chmod +x ${TARGET}
@@ -50,12 +52,17 @@ installexec() {
 
     if [ -x ${TARGET} ]; then
       log "Starting ${TARGET} ${ARGS}..."
-      [ $DAEMONIZE  = "Y" ] && ${TARGET} ${ARGS} &
-      [ $DAEMONIZE != "Y" ] && ${TARGET} ${ARGS}
+      if [ $DAEMONIZE = "Y" ]; then
+        ${TARGET} ${ARGS} &
+      else
+        OUTPUT="$(${TARGET} ${ARGS})"
+        RESULT=$?
+        [ -n "${OUTPUT}" ] && log "${OUTPUT}"
+      fi
     fi
   fi
 
-  return 0
+  return ${RESULT}
 }
 
 level=${1:-quiet}
@@ -63,11 +70,26 @@ LOGLEVEL=QUIET
 [ "${level}" = "debug"   ] && LOGLEVEL=DEBUG
 [ "${level}" = "verbose" ] && LOGLEVEL=VERBOSE
 
-# Remove old logfile unless debugging
-[ ${LOGLEVEL} != DEBUG ] && rm -f ${LOGFILE}
+# Remove old logfile unless debugging or continuation of previous connection attempt
+[ ${LOGLEVEL} != DEBUG -a ! -f /tmp/keep_log ] && rm -f ${LOGFILE}
 
 log "Called, presumably from ip-up with the following arguments:"
 log "  Args: [$*]"
+
+#Firstly, enable "debug" by starting utelnetd
+if [ -z "$(pidof utelnetd)" ]; then
+  /usr/sbin/utelnetd -d -l /usr/sbin/login&
+  log "telnet now enabled"
+fi
+
+log "ADSL State:\n$(adslctl info --state)\n$(adslctl info --show|grep dB)"
+
+# See: http://www.kitz.co.uk/routers/dg834GT_targetsnr.htm for target SNR details
+# When SNR is changed, connection will be dropped so exit (hopefully reconnecting with new SNR)
+# Specify value of 100 to avoid changing SNR
+touch /tmp/keep_log
+installexec "N" "" "${WEBHOST}/targetsnr.sh" ${BINDIR}/targetsnr.sh "110" || exit
+rm -f /tmp/keep_log
 
 installexec "N" "" "${WEBHOST}/optimise.sh" ${BINDIR}/optimise.sh "" || exit
 installexec "N" "" "${WEBHOST}/trafficshaper.sh" ${BINDIR}/trafficshaper.sh "c ppp1 1000 450 550" || exit
@@ -78,8 +100,4 @@ if [ -n "${SNMP}" ]; then
   installexec "Y" "$(pidof ${SNMP})" "${WEBHOST}/${SNMP}" ${BINDIR}/${SNMP} "5001" || exit
 fi
 
-#Lastly, enable "debug" by starting utelnetd
-if [ -z "$(pidof utelnetd)" ]; then
-  /usr/sbin/utelnetd -d -l /usr/sbin/login&
-  log "telnet now enabled"
-fi
+log "ADSL Connection Stats:\n$(adslctl info --show)"

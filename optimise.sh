@@ -84,3 +84,5 @@ echo 1       > /proc/sys/net/ipv4/route/flush
 echo 1 > /proc/sys/net/ipv6/conf/nas1/disable_ipv6
 ifconfig nas1 down
 ifconfig nas1 up
+
+exit 0

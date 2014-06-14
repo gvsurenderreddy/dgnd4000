@@ -103,3 +103,5 @@ tc qdisc  add dev $MODEMIF parent 1:10 handle 20: sfq perturb 10
 tc qdisc  add dev $MODEMIF parent 1:12 handle 30: sfq perturb 10
 
 echo "Finished"
+
+exit 0
