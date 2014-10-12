@@ -84,11 +84,13 @@ fi
 
 log "ADSL State:\n$(adslctl info --state)\n$(adslctl info --show|grep dB)\n$(adslctl profile --show)"
 
-# See: http://www.kitz.co.uk/routers/dg834GT_targetsnr.htm for target SNR details
-# When SNR is changed, connection will be dropped so exit (hopefully reconnecting with new SNR)
-# Specify value of 100 to avoid changing SNR
+# See: http://www.kitz.co.uk/routers/dg834GT_targetsnr.htm
+#      http://wiki.kitz.co.uk/index.php?title=Broadcom_CLI
+# for target SNR details.
+# When SNR is changed, connection will be dropped so exit and hopefully resync with new SNR.
+# Specify a parameter of 100 to avoid changing SNR.
 touch /tmp/keep_log
-installexec "N" "" "${WEBHOST}/targetsnr.sh" ${BINDIR}/targetsnr.sh "110" || exit
+installexec "N" "" "${WEBHOST}/targetsnr.sh" ${BINDIR}/targetsnr.sh "120" || exit
 rm -f /tmp/keep_log
 
 installexec "N" "" "${WEBHOST}/optimise.sh" ${BINDIR}/optimise.sh "" || exit
