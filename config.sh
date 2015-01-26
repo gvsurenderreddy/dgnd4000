@@ -103,3 +103,4 @@ if [ -n "${SNMP}" ]; then
 fi
 
 log "ADSL Connection Stats:\n$(adslctl info --show)"
+date +%s >/tmp/linkup.dat

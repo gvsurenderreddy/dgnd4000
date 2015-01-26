@@ -54,7 +54,6 @@ def grep(match_string, input_string, field=None, fields=None, head=None, tail=No
   re_flags = 0 if case_sensitive else re.IGNORECASE
 
   lines = []
-
   if after:
     found = False
     count = 0
@@ -191,7 +190,7 @@ def getuptimegauge(args, storage):
 
   storage[2] = storage[1]
   storage[1] = (time.time(), {"uptime": uptime})
-  storage[0] =   storage[1]
+  storage[0] = storage[1]
 
 def formatuptimegauge(args, storage, filter=None, verbose=False):
   if not storage[0][1]: return
@@ -431,6 +430,12 @@ def getadslcounters(args, storage):
   CRC      = grep("^CRC:", link, fields=[1,2], head=1, toint=True)[0]
 
   uptime   = timetosecs(link.split("\n")[0])
+  if uptime >=  4294966:
+    try:
+      uptime = grep("", runcmd(args, "cat /tmp/linkup.dat"), field=0, head=1, toint=True)[0]
+      uptime = int(time.time()) - uptime
+    except:
+      pass
 
   storage[2] = storage[1]
   storage[1] = (time.time(), {"01sync":     {"type": "i", "down": sync[0],     "up": sync[1]},
