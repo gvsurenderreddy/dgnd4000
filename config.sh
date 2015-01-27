@@ -93,6 +93,14 @@ touch /tmp/keep_log
 installexec "N" "" "${WEBHOST}/targetsnr.sh" ${BINDIR}/targetsnr.sh "120" || exit
 rm -f /tmp/keep_log
 
+# Set the time
+/usr/sbin/netgear_ntp -z GMT+0 &
+NTP_PID=$!
+log "Setting the date/time..."
+while [ $(date +%Y) -eq 1970 ]; do sleep 1; done
+kill -9 ${NTP_PID}
+log "Date/time is now set"
+
 installexec "N" "" "${WEBHOST}/optimise.sh" ${BINDIR}/optimise.sh "" || exit
 installexec "N" "" "${WEBHOST}/trafficshaper.sh" ${BINDIR}/trafficshaper.sh "c ppp1 1000 450 550" || exit
 log "Router optimised and iptables/traffic control settings configured!"
