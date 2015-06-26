@@ -636,12 +636,12 @@ def gettrafficcounters(args, storage):
     borrow= grep(" borrowed: ", data, field=3)
     dropped=grep("\(dropped ", data, field=6).replace(",", "")
 
-    current[g] = {"01sent":    int(sent),
-                  "02rate1":   int(rate1),
-                  "03rate2":   int(rate2),
-                  "04lended":  int(lended),
-                  "05borrowed":int(borrow),
-                  "06dropped": int(dropped)}
+    current[g] = {"01sent":    int("0" + sent),
+                  "02rate1":   int("0" + rate1),
+                  "03rate2":   int("0" + rate2),
+                  "04lended":  int("0" + lended),
+                  "05borrowed":int("0" + borrow),
+                  "06dropped": int("0" + dropped)}
 
     actual = {}
     delta = {}
@@ -716,12 +716,12 @@ def getdoscounters(args, storage):
     drop = re.match(" *([0-9]*) *([0-9]*) *DROP .*", " %s" % line)
     if drop:
       if prefix:
-        attacks[pname].update({"drop": {"pkts": int(drop.group(1)), "bytes": int(drop.group(2))}})
+        attacks[pname].update({"drop": {"pkts": int("0"+drop.group(1)), "bytes": int("0"+drop.group(2))}})
     else:
       prefix = re.match(" *([0-9]*) *([0-9]*) *DLOG .*prefix [`'](.*)'.*", " %s" % line)
       if prefix:
         pname = prefix.group(3).replace("Scan","").replace("Attack","").replace(" ","")
-        attacks[pname] = {"log": {"pkts": int(prefix.group(1)), "bytes": int(prefix.group(2))}}
+        attacks[pname] = {"log": {"pkts": int("0"+prefix.group(1)), "bytes": int("0"+prefix.group(2))}}
 
   storage[2] = storage[1]
   storage[1] = (time.time(), attacks)
