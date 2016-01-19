@@ -499,26 +499,26 @@ def formatadslcounters(args, storage, filter=None, verbose=False):
 
 def getiptablecounters(args, storage):
   iptables1 = runcmd(args, "iptables -t mangle -L POSTROUTING -vx")
-  TOTAL = grep("^Chain ", iptables1, fields=[4,6], head=1, toint=True)[0]
-  tosfix = grep(" tosfix ", iptables1, fields=[0,1], head=1, toint=True)[0]
-  ackprio = grep(" ackprio ", iptables1, fields=[0,1], head=1, toint=True)[0]
-  mindelay = grep(" Minimize-Delay CLASSIFY ", iptables1, fields=[0,1], head=1, toint=True)[0]
-  dns_udp = grep(" udp dpt:53 ", iptables1, fields=[0,1], head=1, toint=True)[0]
-  dns_tcp = grep(" tcp dpt:53 ", iptables1, fields=[0,1], head=1, toint=True)[0]
-  http = grep(" tcp dpt:80 ", iptables1, fields=[0,1], head=1, toint=True)[0]
-  https = grep(" tcp dpt:443 ", iptables1, fields=[0,1], head=1, toint=True)[0]
-  ftp_data = grep(" tcp dpt:20 ", iptables1, fields=[0,1], head=1, toint=True)[0]
-  ftp_ctrl = grep(" tcp dpt:21 ", iptables1, fields=[0,1], head=1, toint=True)[0]
-  rtmp = grep(" tcp dpt:1935 ", iptables1, fields=[0,1], head=1, toint=True)[0]
-  icmp = grep(" icmp ", iptables1, fields=[0,1], head=1, toint=True)[0]
+  TOTAL = grep("^Chain ", iptables1, fields=[4,6], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  tosfix = grep(" tosfix ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  ackprio = grep(" ackprio ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  mindelay = grep(" Minimize-Delay CLASSIFY ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  dns_udp = grep(" udp dpt:53 ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  dns_tcp = grep(" tcp dpt:53 ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  http = grep(" tcp dpt:80 ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  https = grep(" tcp dpt:443 ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  ftp_data = grep(" tcp dpt:20 ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  ftp_ctrl = grep(" tcp dpt:21 ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  rtmp = grep(" tcp dpt:1935 ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  icmp = grep(" icmp ", iptables1, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
 
   dns = [dns_udp[0] + dns_tcp[0], dns_udp[1] + dns_tcp[1]]
   ftp = [ftp_ctrl[0] + ftp_data[0], ftp_ctrl[1] + ftp_data[1]]
 
   iptables2 = runcmd(args, "iptables -t mangle -L ackprio -vx")
-  ackprio_ign = grep(" !Normal-Service ", iptables2, fields=[0,1], head=1, toint=True)[0]
-  ackprio_min = grep(" set Minimize-Delay ", iptables2, fields=[0,1], head=1, toint=True)[0]
-  ackprio_max = grep(" set Maximize-Throughput ", iptables2, fields=[0,1], head=1, toint=True)[0]
+  ackprio_ign = grep(" !Normal-Service ", iptables2, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  ackprio_min = grep(" set Minimize-Delay ", iptables2, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
+  ackprio_max = grep(" set Maximize-Throughput ", iptables2, fields=[0,1], head=1, toint=True, defaultvalue=[[0,0]])[0]
 
   count_p = 0
   count_b = 0
